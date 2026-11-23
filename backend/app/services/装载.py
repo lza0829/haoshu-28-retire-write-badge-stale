@@ -21,15 +21,6 @@ def 装一批(体: dict[str, Any]) -> dict[str, Any]:
     报 = {"枢纽": 0, "链接": 0, "卫星": 0, "跳过": 0, "明细": []}
     try:
         conn.execute("BEGIN IMMEDIATE")
-        try:
-            from app.modules import 停用可订购角标 as _角
-            for _项 in (链接.get("号卡套餐") or []):
-                _套 = str(_项.get("套餐业务键") or "").strip()
-                if _套 and _角.可订购(conn, _套):
-                    pass
-        except Exception:
-            pass
-
         断链._触发钩子("装载", conn)
         if conn.execute("SELECT 1 FROM 装载批次 WHERE 编号=?", (批号,)).fetchone():
             conn.rollback()
@@ -76,8 +67,11 @@ def 装一批(体: dict[str, Any]) -> dict[str, Any]:
             hk套 = 取枢纽哈希("枢纽_套餐", 套)
             if not hk卡 or not hk套:
                 raise ValueError(f"链接号卡套餐缺枢纽: {号}/{套}")
-            if hk套 in 本批停用套餐 or 断链.套餐已停用(conn, hk套):
-                raise ValueError(断链.拒绝原因(套))
+            if hk套 in 本批停用套餐:
+                raise ValueError(断链.订购写闸(conn, hk套, 套)[1] or 断链.拒绝原因(套))
+            放行, 拒因 = 断链.订购写闸(conn, hk套, 套)
+            if not 放行:
+                raise ValueError(拒因)
             lh = 哈希键("链订购", hk卡, hk套)
             if conn.execute("SELECT 1 FROM 链接_号卡套餐 WHERE 哈希键=?", (lh,)).fetchone():
                 报["跳过"] += 1

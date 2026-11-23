@@ -16,17 +16,24 @@ c = TestClient(app)
 print("== 1) 基线装载 ==")
 print(c.post("/api/装载/夹具?名=号卡套餐样例").json()["结果"])
 
-print("== 2) 停用 套-畅享59 ==")
-print(json.dumps(c.post("/api/套餐/停用", json={"套餐业务键": "套-畅享59", "原因": "下架"}).json(), ensure_ascii=False, indent=1))
+print("== 2) 停用 套-畅享59（卫星+断链清单+熄标志同票）==")
+停 = c.post("/api/套餐/停用", json={"套餐业务键": "套-畅享59", "原因": "下架"}).json()
+print(json.dumps(停, ensure_ascii=False, indent=1))
 
 print("== 3) 停用后灌新订购（须失败闭）==")
 r = c.post("/api/装载/夹具?名=停用后新订购样例").json()
 print(r)
 
-print("== 4) 只读下架贯验接口 ==")
+print("== 4) 只读下架贯验接口（含清单/角标/三源互证）==")
 g = c.get("/api/套餐/下架贯验?套餐业务键=套-畅享59").json()
 print(json.dumps({k: v for k, v in g.items() if k != "旧链"}, ensure_ascii=False, indent=1))
 print("旧链明细:", json.dumps(g["旧链"], ensure_ascii=False, indent=1))
+
+print("== 4b) 断链清单核证只读接口（基线所无）==")
+print(json.dumps(c.get("/api/套餐/断链清单核证").json(), ensure_ascii=False, indent=1))
+
+print("== 4c) 可订购角标/清单投影与互证 ==")
+print(json.dumps(c.get("/api/贯验/可订购角标").json(), ensure_ascii=False, indent=1))
 
 print("== 5) 历史仍可查：链接列表/订购卫星 ==")
 print("链接行数:", len(c.get("/api/链接/号卡套餐").json()))

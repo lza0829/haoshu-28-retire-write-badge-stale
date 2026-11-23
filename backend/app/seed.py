@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS 断链清单投影 (
   清单摘要 TEXT NOT NULL DEFAULT '',
   时刻 TEXT NOT NULL DEFAULT ''
 );
+-- 唯一索引在 初始化库() 去重之后创建，兼容旧库同键多行
 
 CREATE TABLE IF NOT EXISTS 站规 (
   键 TEXT PRIMARY KEY,
@@ -130,6 +131,14 @@ def 初始化库() -> None:
     列 = {r["name"] for r in conn.execute("PRAGMA table_info(链接_号卡套餐)")}
     if "入库时刻" not in 列:
         conn.execute("ALTER TABLE 链接_号卡套餐 ADD COLUMN 入库时刻 TEXT NOT NULL DEFAULT ''")
+    # 旧库若已有同套餐键多行投影，先去重再建唯一索引（每键留编号最大行）
+    conn.execute(
+        "DELETE FROM 断链清单投影 WHERE 编号 NOT IN "
+        "(SELECT MAX(编号) FROM 断链清单投影 GROUP BY 套餐业务键)"
+    )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_断链清单_套餐键 ON 断链清单投影(套餐业务键)"
+    )
     if conn.execute("SELECT COUNT(*) AS c FROM 站规").fetchone()["c"] == 0:
         for k, v in {"站名": "号枢", "默认装载日": "2026-11-21"}.items():
             conn.execute("INSERT INTO 站规(键, 值) VALUES (?, ?)", (k, v))
